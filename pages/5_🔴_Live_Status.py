@@ -29,16 +29,25 @@ def _render_delay_badge(mins: int) -> str:
 
 def _render_station_timeline(stations: list):
     for stn in stations:
-        name   = stn.get("stationName") or stn.get("name", "—")
-        code   = stn.get("stationCode") or stn.get("code", "—")
-        sched_arr = stn.get("scheduledArrival") or stn.get("arr", "—")
-        sched_dep = stn.get("scheduledDeparture") or stn.get("dep", "—")
-        act_arr   = stn.get("actualArrival") or stn.get("actualArr", "")
-        act_dep   = stn.get("actualDeparture") or stn.get("actualDep", "")
-        delay_m   = int(stn.get("delayInArrival") or stn.get("delay") or 0)
-        halt      = stn.get("haltTime") or stn.get("halt", "")
-        departed  = stn.get("hasDeparted") or stn.get("departed", False)
-        is_current = stn.get("isCurrent", False)
+        name   = (stn.get("station_name") or stn.get("stationName")
+                  or stn.get("name") or "—")
+        code   = (stn.get("station_code") or stn.get("stationCode")
+                  or stn.get("code") or "—")
+        sched_arr = (stn.get("sta") or stn.get("scheduled_arrival")
+                     or stn.get("scheduledArrival") or stn.get("arr") or "—")
+        sched_dep = (stn.get("std") or stn.get("scheduled_departure")
+                     or stn.get("scheduledDeparture") or stn.get("dep") or "—")
+        act_arr   = (stn.get("eta") or stn.get("actual_arrival")
+                     or stn.get("actualArrival") or stn.get("actualArr") or "")
+        act_dep   = (stn.get("etd") or stn.get("actual_departure")
+                     or stn.get("actualDeparture") or stn.get("actualDep") or "")
+        delay_m   = int(stn.get("delay") or stn.get("delayInArrival")
+                        or stn.get("late_by") or 0)
+        halt      = (stn.get("halt") or stn.get("haltTime")
+                     or stn.get("halt_time") or "")
+        departed  = (stn.get("has_departed") or stn.get("hasDeparted")
+                     or stn.get("departed") or False)
+        is_current = stn.get("isCurrent") or stn.get("is_current", False)
 
         if is_current:
             dot_color = "#FF4B2B"
@@ -91,14 +100,30 @@ def _render_live_result(data: dict):
         st.warning("No live data available. Train may not have started or data is unavailable.")
         return
 
-    train_no   = data.get("trainNo") or data.get("trainNumber", "—")
-    train_name = data.get("trainName", "—")
-    current_stn = data.get("currentStation") or data.get("currentStationName", "—")
-    next_stn    = data.get("nextStation") or data.get("nextStationName", "—")
-    delay       = int(data.get("delayInMinutes") or data.get("delay") or 0)
-    speed       = data.get("avgSpeed") or data.get("speed", "—")
-    dist_travelled = data.get("distanceTravelled") or data.get("distance", "—")
-    stations    = data.get("stationList") or data.get("stations", [])
+    # Show raw API response for debugging
+    with st.expander("🔧 Raw API Response (debug)", expanded=False):
+        st.json(data)
+
+    # Handle multiple possible key names from IRCTC API variants
+    train_no    = (data.get("train_number") or data.get("trainNo")
+                   or data.get("trainNumber") or data.get("train_no") or "—")
+    train_name  = (data.get("train_name") or data.get("trainName") or "—")
+    current_stn = (data.get("current_station_name") or data.get("currentStation")
+                   or data.get("currentStationName") or data.get("current_station") or "—")
+    next_stn    = (data.get("upcoming_station_name") or data.get("nextStation")
+                   or data.get("nextStationName") or data.get("next_station") or "—")
+    delay       = int(data.get("delay") or data.get("delayInMinutes")
+                      or data.get("late_by") or data.get("lateBy") or 0)
+    speed       = (data.get("avgSpeed") or data.get("avg_speed")
+                   or data.get("speed") or "—")
+    dist_travelled = (data.get("distance_from_source") or data.get("distanceTravelled")
+                      or data.get("distance") or "—")
+    stations    = (data.get("previous_stations") or data.get("upcoming_stations")
+                   or data.get("stationList") or data.get("stations")
+                   or data.get("route") or [])
+    # Merge previous + upcoming stations if both exist
+    if data.get("previous_stations") and data.get("upcoming_stations"):
+        stations = data["previous_stations"] + data["upcoming_stations"]
 
     # ── Live info card ────────────────────────────────────────
     st.markdown(f"""
@@ -235,7 +260,12 @@ if submitted:
             log_search(st.session_state.user_id, "live_status", tn)
 
         if result["ok"]:
-            data = result["data"].get("data", result["data"])
+            raw = result["data"]
+            # Unwrap nested "data" key if present
+            data = raw.get("data", raw) if isinstance(raw, dict) else raw
+            # Some APIs nest further under "body" or "train_status"
+            if isinstance(data, dict):
+                data = data.get("body") or data.get("train_status") or data
             _render_live_result(data)
         else:
             error_card(result["error"])
