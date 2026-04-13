@@ -16,6 +16,38 @@ sidebar_nav()
 inject_css()
 page_header("Cancelled Trains & Alerts", "Check cancelled, diverted and rescheduled trains", "⚠️")
 
+
+# ── Helper functions ──────────────────────────────────────────
+
+def _render_cancel_card(t: dict):
+    cancel_type = t.get("cancelType") or t.get("type", "Cancelled")
+    color = "#FF5252" if "Full" in cancel_type else "#FFD740"
+    reason = t.get("reason") or t.get("remarkReason", "—")
+
+    st.markdown(f"""
+    <div class="ir-card" style="border-left:4px solid {color}">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+                <div style="font-weight:700">{t.get('trainName','—')}</div>
+                <div style="color:#8892A4;font-size:.8rem">
+                    #{t.get('trainNo','—')} &nbsp;|&nbsp;
+                    {t.get('fromStation','—')} → {t.get('toStation','—')}
+                </div>
+            </div>
+            <span style="background:{color}22;color:{color};border:1px solid {color};
+                         border-radius:6px;padding:3px 10px;font-size:.78rem;font-weight:600">
+                {cancel_type}
+            </span>
+        </div>
+        <div style="margin-top:8px;font-size:.82rem;color:#8892A4">
+            📝 Reason: {reason}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ── Main page content ─────────────────────────────────────────
+
 st.markdown("""
 <div class="ir-alert-warn">
     ⚠️ Always verify cancellations on the official IRCTC portal or call <b>139</b> (Railway enquiry).
@@ -60,33 +92,6 @@ if submitted:
                     _render_cancel_card(t)
         else:
             error_card(result["error"])
-
-
-def _render_cancel_card(t: dict):
-    cancel_type = t.get("cancelType") or t.get("type", "Cancelled")
-    color = "#FF5252" if "Full" in cancel_type else "#FFD740"
-    reason = t.get("reason") or t.get("remarkReason", "—")
-
-    st.markdown(f"""
-    <div class="ir-card" style="border-left:4px solid {color}">
-        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <div>
-                <div style="font-weight:700">{t.get('trainName','—')}</div>
-                <div style="color:#8892A4;font-size:.8rem">
-                    #{t.get('trainNo','—')} &nbsp;|&nbsp;
-                    {t.get('fromStation','—')} → {t.get('toStation','—')}
-                </div>
-            </div>
-            <span style="background:{color}22;color:{color};border:1px solid {color};
-                         border-radius:6px;padding:3px 10px;font-size:.78rem;font-weight:600">
-                {cancel_type}
-            </span>
-        </div>
-        <div style="margin-top:8px;font-size:.82rem;color:#8892A4">
-            📝 Reason: {reason}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 # ── Emergency numbers ─────────────────────────────────────────

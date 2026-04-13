@@ -16,60 +16,8 @@ sidebar_nav()
 inject_css()
 page_header("Train Search", "Find any train by number or name", "🔍")
 
-# ── Search form ────────────────────────────────────────────────
-with st.form("search_form"):
-    query = st.text_input(
-        "Enter Train Number or Name",
-        placeholder="e.g. 12301 or Rajdhani or Shatabdi",
-        help="You can enter a partial name or the full train number"
-    )
-    submitted = st.form_submit_button("🔍 Search Train", use_container_width=True)
 
-if submitted and query.strip():
-    api_key = st.session_state.get("rapidapi_key", "")
-
-    if not api_key:
-        demo_mode_notice()
-        # Show sample demo data
-        st.markdown("### Sample Results (Demo Mode)")
-        demo_trains = [
-            {"trainNo": "12301", "trainName": "Howrah Rajdhani Express", "trainType": "RAJDHANI",
-             "origin": "HOWRAH JN", "originCode": "HWH", "destination": "NEW DELHI", "destCode": "NDLS",
-             "departureTime": "14:05", "arrivalTime": "10:00", "duration": "19h 55m",
-             "classes": ["1A","2A","3A"], "runsOn": "Mon Tue Wed Thu Fri Sat Sun"},
-            {"trainNo": "12302", "trainName": "New Delhi Rajdhani Express", "trainType": "RAJDHANI",
-             "origin": "NEW DELHI", "originCode": "NDLS", "destination": "HOWRAH JN", "destCode": "HWH",
-             "departureTime": "16:55", "arrivalTime": "13:00", "duration": "20h 05m",
-             "classes": ["1A","2A","3A"], "runsOn": "Daily"},
-            {"trainNo": "12951", "trainName": "Mumbai Rajdhani Express", "trainType": "RAJDHANI",
-             "origin": "MUMBAI CENTRAL", "originCode": "MMCT", "destination": "NEW DELHI", "destCode": "NDLS",
-             "departureTime": "17:00", "arrivalTime": "08:35", "duration": "15h 35m",
-             "classes": ["1A","2A","3A"], "runsOn": "Daily"},
-        ]
-        for t in demo_trains:
-            _render_train_card(t, demo=True)
-    else:
-        with st.spinner("🔍 Searching trains..."):
-            result = search_train(query.strip())
-
-        if result["ok"]:
-            data = result["data"]
-            trains = data.get("data", [])
-            if is_logged_in():
-                log_search(st.session_state.user_id, "train_search", query.strip())
-
-            if not trains:
-                no_results_card(f"No trains found for '{query}'. Try a different name or number.")
-            else:
-                st.success(f"✅ Found **{len(trains)}** train(s) matching '{query}'")
-                for t in trains:
-                    _render_train_card(t)
-        else:
-            error_card(result["error"])
-
-elif submitted:
-    st.warning("Please enter a train name or number to search.")
-
+# ── Helper functions ──────────────────────────────────────────
 
 def _render_train_card(t: dict, demo: bool = False):
     classes_html = "".join(
@@ -123,3 +71,58 @@ def _render_train_card(t: dict, demo: bool = False):
         <div style="margin-top:10px">{classes_html}</div>
     </div>
     """, unsafe_allow_html=True)
+
+
+# ── Search form ────────────────────────────────────────────────
+with st.form("search_form"):
+    query = st.text_input(
+        "Enter Train Number or Name",
+        placeholder="e.g. 12301 or Rajdhani or Shatabdi",
+        help="You can enter a partial name or the full train number"
+    )
+    submitted = st.form_submit_button("🔍 Search Train", use_container_width=True)
+
+if submitted and query.strip():
+    api_key = st.session_state.get("rapidapi_key", "")
+
+    if not api_key:
+        demo_mode_notice()
+        # Show sample demo data
+        st.markdown("### Sample Results (Demo Mode)")
+        demo_trains = [
+            {"trainNo": "12301", "trainName": "Howrah Rajdhani Express", "trainType": "RAJDHANI",
+             "origin": "HOWRAH JN", "originCode": "HWH", "destination": "NEW DELHI", "destCode": "NDLS",
+             "departureTime": "14:05", "arrivalTime": "10:00", "duration": "19h 55m",
+             "classes": ["1A","2A","3A"], "runsOn": "Mon Tue Wed Thu Fri Sat Sun"},
+            {"trainNo": "12302", "trainName": "New Delhi Rajdhani Express", "trainType": "RAJDHANI",
+             "origin": "NEW DELHI", "originCode": "NDLS", "destination": "HOWRAH JN", "destCode": "HWH",
+             "departureTime": "16:55", "arrivalTime": "13:00", "duration": "20h 05m",
+             "classes": ["1A","2A","3A"], "runsOn": "Daily"},
+            {"trainNo": "12951", "trainName": "Mumbai Rajdhani Express", "trainType": "RAJDHANI",
+             "origin": "MUMBAI CENTRAL", "originCode": "MMCT", "destination": "NEW DELHI", "destCode": "NDLS",
+             "departureTime": "17:00", "arrivalTime": "08:35", "duration": "15h 35m",
+             "classes": ["1A","2A","3A"], "runsOn": "Daily"},
+        ]
+        for t in demo_trains:
+            _render_train_card(t, demo=True)
+    else:
+        with st.spinner("🔍 Searching trains..."):
+            result = search_train(query.strip())
+
+        if result["ok"]:
+            data = result["data"]
+            trains = data.get("data", [])
+            if is_logged_in():
+                log_search(st.session_state.user_id, "train_search", query.strip())
+
+            if not trains:
+                no_results_card(f"No trains found for '{query}'. Try a different name or number.")
+            else:
+                st.success(f"✅ Found **{len(trains)}** train(s) matching '{query}'")
+                for t in trains:
+                    _render_train_card(t)
+        else:
+            error_card(result["error"])
+
+elif submitted:
+    st.warning("Please enter a train name or number to search.")

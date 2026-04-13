@@ -15,62 +15,8 @@ sidebar_nav()
 inject_css()
 page_header("Live Train Status", "Real-time running position, delays & next station", "🔴")
 
-# ── Auto-refresh toggle ────────────────────────────────────────
-col_form, col_refresh = st.columns([3, 1])
-with col_refresh:
-    auto_refresh = st.toggle("🔄 Auto Refresh (60s)", value=False)
 
-# ── Form ──────────────────────────────────────────────────────
-with st.form("live_form"):
-    c1, c2 = st.columns(2)
-    with c1:
-        train_no = st.text_input(
-            "🚄 Train Number *",
-            placeholder="e.g. 12301",
-            help="Enter the 5-digit train number"
-        )
-    with c2:
-        start_day = st.selectbox(
-            "🗓 Train Started On",
-            options=[0, 1, 2],
-            format_func=lambda x: ["Today", "Yesterday", "Day Before Yesterday"][x],
-            help="When did the train start its journey from the origin station?"
-        )
-    submitted = st.form_submit_button("📡 Get Live Status", use_container_width=True)
-
-if auto_refresh:
-    import time
-    st.markdown("""
-    <div class="ir-alert-info">
-        🔄 Auto-refresh is ON — page will refresh every 60 seconds.
-    </div>
-    """, unsafe_allow_html=True)
-    time.sleep(60)
-    st.rerun()
-
-if submitted:
-    tn = train_no.strip()
-    if not tn:
-        st.error("⚠️ Please enter a train number.")
-        st.stop()
-
-    api_key = st.session_state.get("rapidapi_key", "")
-    if not api_key:
-        demo_mode_notice()
-        _render_demo_live(tn)
-    else:
-        with st.spinner(f"📡 Fetching live status for train #{tn}..."):
-            result = get_live_train_status(tn, start_day)
-
-        if is_logged_in():
-            log_search(st.session_state.user_id, "live_status", tn)
-
-        if result["ok"]:
-            data = result["data"].get("data", result["data"])
-            _render_live_result(data)
-        else:
-            error_card(result["error"])
-
+# ── Helper functions ──────────────────────────────────────────
 
 def _render_delay_badge(mins: int) -> str:
     if mins == 0:
@@ -79,6 +25,65 @@ def _render_delay_badge(mins: int) -> str:
         return f'<span style="color:#FF5252;font-weight:700">⚠️ {mins} min late</span>'
     else:
         return f'<span style="color:#00E676;font-weight:700">✅ {abs(mins)} min early</span>'
+
+
+def _render_station_timeline(stations: list):
+    for stn in stations:
+        name   = stn.get("stationName") or stn.get("name", "—")
+        code   = stn.get("stationCode") or stn.get("code", "—")
+        sched_arr = stn.get("scheduledArrival") or stn.get("arr", "—")
+        sched_dep = stn.get("scheduledDeparture") or stn.get("dep", "—")
+        act_arr   = stn.get("actualArrival") or stn.get("actualArr", "")
+        act_dep   = stn.get("actualDeparture") or stn.get("actualDep", "")
+        delay_m   = int(stn.get("delayInArrival") or stn.get("delay") or 0)
+        halt      = stn.get("haltTime") or stn.get("halt", "")
+        departed  = stn.get("hasDeparted") or stn.get("departed", False)
+        is_current = stn.get("isCurrent", False)
+
+        if is_current:
+            dot_color = "#FF4B2B"
+            bg = "background:linear-gradient(90deg,#FF4B2B11,transparent)"
+            border = "border-left:3px solid #FF4B2B"
+        elif departed:
+            dot_color = "#00E676"
+            bg = ""
+            border = "border-left:3px solid #00E67666"
+        else:
+            dot_color = "#2A2D3E"
+            bg = ""
+            border = "border-left:3px solid #2A2D3E"
+
+        delay_tag = ""
+        if delay_m > 0:
+            delay_tag = f'<span style="color:#FF5252;font-size:.7rem;margin-left:6px">+{delay_m}m</span>'
+        elif delay_m < 0:
+            delay_tag = f'<span style="color:#00E676;font-size:.7rem;margin-left:6px">{delay_m}m</span>'
+
+        current_tag = '<span style="background:#FF4B2B;color:white;border-radius:4px;padding:1px 6px;font-size:.68rem;margin-left:8px">CURRENT</span>' if is_current else ""
+
+        st.markdown(f"""
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
+                    margin-bottom:6px;border-radius:8px;{bg};{border}">
+            <div style="width:11px;height:11px;border-radius:50%;background:{dot_color};
+                        flex-shrink:0;margin-top:5px"></div>
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:.9rem">
+                    {name} <span style="color:#8892A4;font-size:.75rem">({code})</span>
+                    {current_tag}
+                </div>
+                <div style="display:flex;gap:20px;margin-top:4px;flex-wrap:wrap;font-size:.78rem;color:#8892A4">
+                    <span>Arr: <b style="color:#FAFAFA">{sched_arr}</b>
+                        {f' → <b style="color:#FF4B2B">{act_arr}</b>' if act_arr else ''}
+                        {delay_tag}
+                    </span>
+                    <span>Dep: <b style="color:#FAFAFA">{sched_dep}</b>
+                        {f' → <b style="color:#FF4B2B">{act_dep}</b>' if act_dep else ''}
+                    </span>
+                    {f'<span>Halt: <b style="color:#FAFAFA">{halt}</b></span>' if halt else ''}
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 def _render_live_result(data: dict):
@@ -151,65 +156,6 @@ def _render_live_result(data: dict):
         _render_station_timeline(stations)
 
 
-def _render_station_timeline(stations: list):
-    for stn in stations:
-        name   = stn.get("stationName") or stn.get("name", "—")
-        code   = stn.get("stationCode") or stn.get("code", "—")
-        sched_arr = stn.get("scheduledArrival") or stn.get("arr", "—")
-        sched_dep = stn.get("scheduledDeparture") or stn.get("dep", "—")
-        act_arr   = stn.get("actualArrival") or stn.get("actualArr", "")
-        act_dep   = stn.get("actualDeparture") or stn.get("actualDep", "")
-        delay_m   = int(stn.get("delayInArrival") or stn.get("delay") or 0)
-        halt      = stn.get("haltTime") or stn.get("halt", "")
-        departed  = stn.get("hasDeparted") or stn.get("departed", False)
-        is_current = stn.get("isCurrent", False)
-
-        if is_current:
-            dot_color = "#FF4B2B"
-            bg = "background:linear-gradient(90deg,#FF4B2B11,transparent)"
-            border = "border-left:3px solid #FF4B2B"
-        elif departed:
-            dot_color = "#00E676"
-            bg = ""
-            border = "border-left:3px solid #00E67666"
-        else:
-            dot_color = "#2A2D3E"
-            bg = ""
-            border = "border-left:3px solid #2A2D3E"
-
-        delay_tag = ""
-        if delay_m > 0:
-            delay_tag = f'<span style="color:#FF5252;font-size:.7rem;margin-left:6px">+{delay_m}m</span>'
-        elif delay_m < 0:
-            delay_tag = f'<span style="color:#00E676;font-size:.7rem;margin-left:6px">{delay_m}m</span>'
-
-        current_tag = '<span style="background:#FF4B2B;color:white;border-radius:4px;padding:1px 6px;font-size:.68rem;margin-left:8px">CURRENT</span>' if is_current else ""
-
-        st.markdown(f"""
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
-                    margin-bottom:6px;border-radius:8px;{bg};{border}">
-            <div style="width:11px;height:11px;border-radius:50%;background:{dot_color};
-                        flex-shrink:0;margin-top:5px"></div>
-            <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:.9rem">
-                    {name} <span style="color:#8892A4;font-size:.75rem">({code})</span>
-                    {current_tag}
-                </div>
-                <div style="display:flex;gap:20px;margin-top:4px;flex-wrap:wrap;font-size:.78rem;color:#8892A4">
-                    <span>Arr: <b style="color:#FAFAFA">{sched_arr}</b>
-                        {f' → <b style="color:#FF4B2B">{act_arr}</b>' if act_arr else ''}
-                        {delay_tag}
-                    </span>
-                    <span>Dep: <b style="color:#FAFAFA">{sched_dep}</b>
-                        {f' → <b style="color:#FF4B2B">{act_dep}</b>' if act_dep else ''}
-                    </span>
-                    {f'<span>Halt: <b style="color:#FAFAFA">{halt}</b></span>' if halt else ''}
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
 def _render_demo_live(tn: str):
     st.markdown("### Live Running Status (Demo Mode)")
     demo_stations = [
@@ -236,3 +182,60 @@ def _render_demo_live(tn: str):
         "stationList": demo_stations,
     }
     _render_live_result(demo_data)
+
+
+# ── Auto-refresh toggle ────────────────────────────────────────
+col_form, col_refresh = st.columns([3, 1])
+with col_refresh:
+    auto_refresh = st.toggle("🔄 Auto Refresh (60s)", value=False)
+
+# ── Form ──────────────────────────────────────────────────────
+with st.form("live_form"):
+    c1, c2 = st.columns(2)
+    with c1:
+        train_no = st.text_input(
+            "🚄 Train Number *",
+            placeholder="e.g. 12301",
+            help="Enter the 5-digit train number"
+        )
+    with c2:
+        start_day = st.selectbox(
+            "🗓 Train Started On",
+            options=[0, 1, 2],
+            format_func=lambda x: ["Today", "Yesterday", "Day Before Yesterday"][x],
+            help="When did the train start its journey from the origin station?"
+        )
+    submitted = st.form_submit_button("📡 Get Live Status", use_container_width=True)
+
+if auto_refresh:
+    import time
+    st.markdown("""
+    <div class="ir-alert-info">
+        🔄 Auto-refresh is ON — page will refresh every 60 seconds.
+    </div>
+    """, unsafe_allow_html=True)
+    time.sleep(60)
+    st.rerun()
+
+if submitted:
+    tn = train_no.strip()
+    if not tn:
+        st.error("⚠️ Please enter a train number.")
+        st.stop()
+
+    api_key = st.session_state.get("rapidapi_key", "")
+    if not api_key:
+        demo_mode_notice()
+        _render_demo_live(tn)
+    else:
+        with st.spinner(f"📡 Fetching live status for train #{tn}..."):
+            result = get_live_train_status(tn, start_day)
+
+        if is_logged_in():
+            log_search(st.session_state.user_id, "live_status", tn)
+
+        if result["ok"]:
+            data = result["data"].get("data", result["data"])
+            _render_live_result(data)
+        else:
+            error_card(result["error"])

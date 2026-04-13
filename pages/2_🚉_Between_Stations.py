@@ -20,7 +20,9 @@ sidebar_nav()
 inject_css()
 page_header("Trains Between Stations", "Find all trains running between any two stations", "🚉")
 
-# ── Station Search Helper ──────────────────────────────────────
+
+# ── Helper functions ──────────────────────────────────────────
+
 def station_picker(label: str, key: str):
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -31,6 +33,56 @@ def station_picker(label: str, key: str):
                              placeholder="e.g. MMCT",
                              help="Enter the 3-5 letter station code")
     return name.strip(), code.strip().upper()
+
+
+def _render_train_row(t: dict, journey_date=None):
+    avail_html = ""
+    for a in (t.get("availability") or []):
+        cls = a.get("class") or a.get("classType", "")
+        status = a.get("available") or a.get("availabilityStatus", "—")
+        s_upper = str(status).upper()
+        color = "#00E676" if "AVL" in s_upper else ("#FFD740" if "WL" in s_upper else ("#FF9100" if "RAC" in s_upper else "#FF5252"))
+        avail_html += (
+            f'<span style="background:#1C1F2E;border:1px solid {color};border-radius:6px;'
+            f'padding:3px 8px;font-size:.75rem;margin-right:6px;color:{color}">'
+            f'{cls}: {status}</span>'
+        )
+
+    st.markdown(f"""
+    <div class="ir-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+            <div>
+                <div style="font-size:1rem;font-weight:700">
+                    🚄 {t.get('trainName','—')}
+                </div>
+                <div style="color:#8892A4;font-size:.78rem;margin-top:2px">
+                    #{t.get('trainNo','—')} &nbsp;|&nbsp;
+                    {t.get('distance','—')} km &nbsp;|&nbsp;
+                    🗓 {t.get('runsOn','—')}
+                </div>
+            </div>
+            <span class="train-badge">{t.get('trainType','EXPRESS')}</span>
+        </div>
+
+        <div style="display:flex;gap:28px;margin:12px 0;flex-wrap:wrap;align-items:center">
+            <div>
+                <div style="font-size:1.3rem;font-weight:700;color:#FF4B2B">{t.get('departureTime','—')}</div>
+                <div style="font-size:.72rem;color:#8892A4">Departure</div>
+            </div>
+            <div>
+                <div style="font-size:.8rem;color:#8892A4;text-align:center">
+                    ──── ⏱ {t.get('duration','—')} ────
+                </div>
+            </div>
+            <div>
+                <div style="font-size:1.3rem;font-weight:700">{t.get('arrivalTime','—')}</div>
+                <div style="font-size:.72rem;color:#8892A4">Arrival</div>
+            </div>
+        </div>
+
+        <div style="margin-top:6px">{avail_html if avail_html else '<span style="color:#8892A4;font-size:.8rem">Availability data not available — check Seat Availability page</span>'}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ── Form ──────────────────────────────────────────────────────
@@ -165,56 +217,6 @@ if submitted:
                     _render_train_row(t, journey_date)
         else:
             error_card(result["error"])
-
-
-def _render_train_row(t: dict, journey_date=None):
-    avail_html = ""
-    for a in (t.get("availability") or []):
-        cls = a.get("class") or a.get("classType", "")
-        status = a.get("available") or a.get("availabilityStatus", "—")
-        s_upper = str(status).upper()
-        color = "#00E676" if "AVL" in s_upper else ("#FFD740" if "WL" in s_upper else ("#FF9100" if "RAC" in s_upper else "#FF5252"))
-        avail_html += (
-            f'<span style="background:#1C1F2E;border:1px solid {color};border-radius:6px;'
-            f'padding:3px 8px;font-size:.75rem;margin-right:6px;color:{color}">'
-            f'{cls}: {status}</span>'
-        )
-
-    st.markdown(f"""
-    <div class="ir-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-            <div>
-                <div style="font-size:1rem;font-weight:700">
-                    🚄 {t.get('trainName','—')}
-                </div>
-                <div style="color:#8892A4;font-size:.78rem;margin-top:2px">
-                    #{t.get('trainNo','—')} &nbsp;|&nbsp; 
-                    {t.get('distance','—')} km &nbsp;|&nbsp;
-                    🗓 {t.get('runsOn','—')}
-                </div>
-            </div>
-            <span class="train-badge">{t.get('trainType','EXPRESS')}</span>
-        </div>
-
-        <div style="display:flex;gap:28px;margin:12px 0;flex-wrap:wrap;align-items:center">
-            <div>
-                <div style="font-size:1.3rem;font-weight:700;color:#FF4B2B">{t.get('departureTime','—')}</div>
-                <div style="font-size:.72rem;color:#8892A4">Departure</div>
-            </div>
-            <div>
-                <div style="font-size:.8rem;color:#8892A4;text-align:center">
-                    ──── ⏱ {t.get('duration','—')} ────
-                </div>
-            </div>
-            <div>
-                <div style="font-size:1.3rem;font-weight:700">{t.get('arrivalTime','—')}</div>
-                <div style="font-size:.72rem;color:#8892A4">Arrival</div>
-            </div>
-        </div>
-
-        <div style="margin-top:6px">{avail_html if avail_html else '<span style="color:#8892A4;font-size:.8rem">Availability data not available — check Seat Availability page</span>'}</div>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 # ── Popular routes ─────────────────────────────────────────────

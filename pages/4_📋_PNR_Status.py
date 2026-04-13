@@ -15,62 +15,8 @@ sidebar_nav()
 inject_css()
 page_header("PNR Status", "Check your booking & passenger reservation status", "📋")
 
-# ── What is PNR info ──────────────────────────────────────────
-with st.expander("ℹ️ What is a PNR Number?"):
-    st.markdown("""
-    A **PNR (Passenger Name Record)** is a 10-digit unique number assigned to every railway booking.
-    - Find it on your ticket, IRCTC booking confirmation email, or SMS
-    - Format: 10 digits, e.g. `4234567890`
-    - You can check PNR status up to **4 hours after departure**
-    """)
 
-# ── Recent PNRs from session ───────────────────────────────────
-if is_logged_in():
-    from utils.session import get_search_history
-    history = get_search_history(st.session_state.user_id)
-    pnr_history = [h["query"] for h in history if h["type"] == "pnr_status"][:5]
-    if pnr_history:
-        st.markdown("**🕐 Recent PNR Checks:**")
-        cols = st.columns(min(len(pnr_history), 5))
-        for i, pnr in enumerate(pnr_history):
-            with cols[i]:
-                if st.button(pnr, key=f"hist_{i}", use_container_width=True):
-                    st.session_state["pnr_input"] = pnr
-
-# ── Form ──────────────────────────────────────────────────────
-with st.form("pnr_form"):
-    pnr_number = st.text_input(
-        "🎟 Enter PNR Number",
-        value=st.session_state.get("pnr_input", ""),
-        placeholder="10-digit PNR number, e.g. 4234567890",
-        max_chars=10,
-        help="Enter the 10-digit PNR from your railway ticket",
-    )
-    submitted = st.form_submit_button("🔍 Check PNR Status", use_container_width=True)
-
-if submitted:
-    pnr = pnr_number.strip()
-    if len(pnr) != 10 or not pnr.isdigit():
-        st.error("⚠️ Please enter a valid 10-digit numeric PNR number.")
-        st.stop()
-
-    api_key = st.session_state.get("rapidapi_key", "")
-    if not api_key:
-        demo_mode_notice()
-        _render_demo_pnr(pnr)
-    else:
-        with st.spinner("🔍 Fetching PNR status..."):
-            result = get_pnr_status(pnr)
-
-        if is_logged_in():
-            log_search(st.session_state.user_id, "pnr_status", pnr)
-
-        if result["ok"]:
-            data = result["data"].get("data", result["data"])
-            _render_pnr_result(data)
-        else:
-            error_card(result["error"])
-
+# ── Helper functions (must be defined before use) ─────────────
 
 def _status_color(status: str) -> tuple:
     s = str(status).upper()
@@ -190,3 +136,60 @@ def _render_demo_pnr(pnr: str):
         ],
     }
     _render_pnr_result(demo)
+
+
+# ── What is PNR info ──────────────────────────────────────────
+with st.expander("ℹ️ What is a PNR Number?"):
+    st.markdown("""
+    A **PNR (Passenger Name Record)** is a 10-digit unique number assigned to every railway booking.
+    - Find it on your ticket, IRCTC booking confirmation email, or SMS
+    - Format: 10 digits, e.g. `4234567890`
+    - You can check PNR status up to **4 hours after departure**
+    """)
+
+# ── Recent PNRs from session ───────────────────────────────────
+if is_logged_in():
+    from utils.session import get_search_history
+    history = get_search_history(st.session_state.user_id)
+    pnr_history = [h["query"] for h in history if h["type"] == "pnr_status"][:5]
+    if pnr_history:
+        st.markdown("**🕐 Recent PNR Checks:**")
+        cols = st.columns(min(len(pnr_history), 5))
+        for i, pnr in enumerate(pnr_history):
+            with cols[i]:
+                if st.button(pnr, key=f"hist_{i}", use_container_width=True):
+                    st.session_state["pnr_input"] = pnr
+
+# ── Form ──────────────────────────────────────────────────────
+with st.form("pnr_form"):
+    pnr_number = st.text_input(
+        "🎟 Enter PNR Number",
+        value=st.session_state.get("pnr_input", ""),
+        placeholder="10-digit PNR number, e.g. 4234567890",
+        max_chars=10,
+        help="Enter the 10-digit PNR from your railway ticket",
+    )
+    submitted = st.form_submit_button("🔍 Check PNR Status", use_container_width=True)
+
+if submitted:
+    pnr = pnr_number.strip()
+    if len(pnr) != 10 or not pnr.isdigit():
+        st.error("⚠️ Please enter a valid 10-digit numeric PNR number.")
+        st.stop()
+
+    api_key = st.session_state.get("rapidapi_key", "")
+    if not api_key:
+        demo_mode_notice()
+        _render_demo_pnr(pnr)
+    else:
+        with st.spinner("🔍 Fetching PNR status..."):
+            result = get_pnr_status(pnr)
+
+        if is_logged_in():
+            log_search(st.session_state.user_id, "pnr_status", pnr)
+
+        if result["ok"]:
+            data = result["data"].get("data", result["data"])
+            _render_pnr_result(data)
+        else:
+            error_card(result["error"])

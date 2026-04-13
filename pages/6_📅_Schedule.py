@@ -16,38 +16,8 @@ sidebar_nav()
 inject_css()
 page_header("Train Schedule", "Full station-wise timetable for any train", "📅")
 
-# ── Form ──────────────────────────────────────────────────────
-with st.form("schedule_form"):
-    train_no = st.text_input(
-        "🚄 Train Number",
-        placeholder="Enter train number, e.g. 12301",
-        help="5-digit train number"
-    )
-    submitted = st.form_submit_button("📋 Get Schedule", use_container_width=True)
 
-if submitted:
-    tn = train_no.strip()
-    if not tn:
-        st.error("⚠️ Please enter a train number.")
-        st.stop()
-
-    api_key = st.session_state.get("rapidapi_key", "")
-    if not api_key:
-        demo_mode_notice()
-        _render_demo_schedule(tn)
-    else:
-        with st.spinner(f"⏳ Loading schedule for train #{tn}..."):
-            result = get_train_schedule(tn)
-
-        if is_logged_in():
-            log_search(st.session_state.user_id, "schedule", tn)
-
-        if result["ok"]:
-            data = result["data"].get("data", result["data"])
-            _render_schedule(data)
-        else:
-            error_card(result["error"])
-
+# ── Helper functions ──────────────────────────────────────────
 
 def _render_schedule(data: dict | list):
     # Handle different response shapes
@@ -168,3 +138,36 @@ def _render_demo_schedule(tn: str):
         ],
     }
     _render_schedule(demo_data)
+
+
+# ── Form ──────────────────────────────────────────────────────
+with st.form("schedule_form"):
+    train_no = st.text_input(
+        "🚄 Train Number",
+        placeholder="Enter train number, e.g. 12301",
+        help="5-digit train number"
+    )
+    submitted = st.form_submit_button("📋 Get Schedule", use_container_width=True)
+
+if submitted:
+    tn = train_no.strip()
+    if not tn:
+        st.error("⚠️ Please enter a train number.")
+        st.stop()
+
+    api_key = st.session_state.get("rapidapi_key", "")
+    if not api_key:
+        demo_mode_notice()
+        _render_demo_schedule(tn)
+    else:
+        with st.spinner(f"⏳ Loading schedule for train #{tn}..."):
+            result = get_train_schedule(tn)
+
+        if is_logged_in():
+            log_search(st.session_state.user_id, "schedule", tn)
+
+        if result["ok"]:
+            data = result["data"].get("data", result["data"])
+            _render_schedule(data)
+        else:
+            error_card(result["error"])

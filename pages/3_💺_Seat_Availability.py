@@ -19,6 +19,60 @@ sidebar_nav()
 inject_css()
 page_header("Seat Availability", "Check real-time seat availability by class, quota & date range", "💺")
 
+
+# ── Helper functions ──────────────────────────────────────────
+
+def _render_avail_row(d, status: str, cls: str, fare):
+    s = str(status).upper()
+    if "AVL" in s:
+        color, emoji, label = "#00E676", "🟢", "AVAILABLE"
+    elif "WL" in s:
+        color, emoji, label = "#FFD740", "🟡", "WAITLIST"
+    elif "RAC" in s:
+        color, emoji, label = "#FF9100", "🟠", "RAC"
+    elif "REGRET" in s or "NOT" in s:
+        color, emoji, label = "#FF5252", "🔴", "REGRET"
+    else:
+        color, emoji, label = "#8892A4", "⚪", "UNKNOWN"
+
+    fare_str = f"₹{fare}" if fare not in ("—", None, "") else "—"
+
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;
+                background:#1C1F2E;border:1px solid {color}44;border-radius:10px;
+                margin-bottom:8px;flex-wrap:wrap">
+        <div style="min-width:105px">
+            <div style="font-weight:700;font-size:.95rem">{d.strftime('%d %b %Y')}</div>
+            <div style="font-size:.72rem;color:#8892A4">{d.strftime('%A')}</div>
+        </div>
+        <div style="flex:1;min-width:160px">
+            <div style="color:{color};font-weight:700;font-size:1rem">{emoji} {status}</div>
+            <div style="font-size:.72rem;color:#8892A4">{label}</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:.9rem;font-weight:600;color:#29B6F6">{fare_str}</div>
+            <div style="font-size:.72rem;color:#8892A4">Fare ({cls})</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _render_demo_availability(tn, fc, tc, cls, quota, start_date):
+    demo_statuses = [
+        ("AVL 42", "₹2,045"), ("AVL 18", "₹2,045"),
+        ("RAC 4", "₹2,045"), ("WL 11", "₹2,045"), ("WL 23", "₹2,045"),
+    ]
+    for i, (status, fare) in enumerate(demo_statuses):
+        d = start_date + timedelta(days=i)
+        _render_avail_row(d, status, cls, fare)
+
+    st.markdown("""
+    <div class="ir-alert-info" style="margin-top:12px">
+        💡 Set your RapidAPI key in ⚙️ Settings to see real-time availability data.
+    </div>
+    """, unsafe_allow_html=True)
+
+
 # ── Form ──────────────────────────────────────────────────────
 with st.form("avail_form"):
     c1, c2 = st.columns(2)
@@ -133,57 +187,6 @@ if submitted:
             error_card("Could not fetch availability. Please verify the train number and station codes.")
 
 
-def _render_avail_row(d, status: str, cls: str, fare):
-    s = str(status).upper()
-    if "AVL" in s:
-        color, emoji, label = "#00E676", "🟢", "AVAILABLE"
-    elif "WL" in s:
-        color, emoji, label = "#FFD740", "🟡", "WAITLIST"
-    elif "RAC" in s:
-        color, emoji, label = "#FF9100", "🟠", "RAC"
-    elif "REGRET" in s or "NOT" in s:
-        color, emoji, label = "#FF5252", "🔴", "REGRET"
-    else:
-        color, emoji, label = "#8892A4", "⚪", "UNKNOWN"
-
-    fare_str = f"₹{fare}" if fare not in ("—", None, "") else "—"
-
-    st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;
-                background:#1C1F2E;border:1px solid {color}44;border-radius:10px;
-                margin-bottom:8px;flex-wrap:wrap">
-        <div style="min-width:105px">
-            <div style="font-weight:700;font-size:.95rem">{d.strftime('%d %b %Y')}</div>
-            <div style="font-size:.72rem;color:#8892A4">{d.strftime('%A')}</div>
-        </div>
-        <div style="flex:1;min-width:160px">
-            <div style="color:{color};font-weight:700;font-size:1rem">{emoji} {status}</div>
-            <div style="font-size:.72rem;color:#8892A4">{label}</div>
-        </div>
-        <div style="text-align:right">
-            <div style="font-size:.9rem;font-weight:600;color:#29B6F6">{fare_str}</div>
-            <div style="font-size:.72rem;color:#8892A4">Fare ({cls})</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def _render_demo_availability(tn, fc, tc, cls, quota, start_date):
-    demo_statuses = [
-        ("AVL 42", "₹2,045"), ("AVL 18", "₹2,045"),
-        ("RAC 4", "₹2,045"), ("WL 11", "₹2,045"), ("WL 23", "₹2,045"),
-    ]
-    for i, (status, fare) in enumerate(demo_statuses):
-        d = start_date + timedelta(days=i)
-        _render_avail_row(d, status, cls, fare)
-
-    st.markdown("""
-    <div class="ir-alert-info" style="margin-top:12px">
-        💡 Set your RapidAPI key in ⚙️ Settings to see real-time availability data.
-    </div>
-    """, unsafe_allow_html=True)
-
-
 # ── Tips ──────────────────────────────────────────────────────
 with st.expander("ℹ️ Availability Status Guide"):
     st.markdown("""
@@ -195,6 +198,6 @@ with st.expander("ℹ️ Availability Status Guide"):
     | **REGRET** | Booking not available (WL full) |
     | **AVAILABLE** | Berths available |
 
-    **Tatkal Quota (TQ):** Opens 1 day before departure at 10:00 AM.  
+    **Tatkal Quota (TQ):** Opens 1 day before departure at 10:00 AM.
     **Premium Tatkal (PT):** Opens 1 day before departure at 11:00 AM (dynamic pricing).
     """)
