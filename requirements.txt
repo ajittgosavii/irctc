@@ -1,8 +1,5 @@
-streamlit==1.32.0
-requests==2.31.0
-pandas==2.1.4
-plotly==5.18.0
-python-dateutil==2.8.2
-streamlit-option-menu==0.3.12
-streamlit-lottie==0.0.5
-Pillow==10.2.0
+streamlit>=1.35.0
+requests>=2.31.0
+pandas>=2.2.0
+plotly>=5.18.0
+Pillow>=10.3.0
