@@ -261,6 +261,9 @@ if submitted:
 
         if result["ok"]:
             raw = result["data"]
+            # Show full raw response for debugging
+            with st.expander("🔧 Full Raw API Response (debug)", expanded=True):
+                st.json(raw)
             # Unwrap nested "data" key if present
             data = raw.get("data", raw) if isinstance(raw, dict) else raw
             # Some APIs nest further under "body" or "train_status"
