@@ -36,14 +36,28 @@ def _render_pnr_result(data: dict):
         st.warning("No data returned. The PNR may have expired or is invalid.")
         return
 
-    train_no   = data.get("trainNumber") or data.get("trainNo", "—")
-    train_name = data.get("trainName", "—")
-    from_stn   = data.get("boardingStationName") or data.get("fromStation", "—")
-    to_stn     = data.get("reservationUpto") or data.get("toStation", "—")
-    doj        = data.get("dateOfJourney") or data.get("doj", "—")
-    cls        = data.get("journeyClass", "—")
-    chart      = data.get("chartPrepared", False)
-    passengers = data.get("passengerList") or data.get("passengers", [])
+    # Handle all known IRCTC API field name variants
+    train_no   = (data.get("trainNumber") or data.get("trainNo")
+                  or data.get("TrainNo") or data.get("train_number")
+                  or data.get("train_no") or "—")
+    train_name = (data.get("trainName") or data.get("TrainName")
+                  or data.get("train_name") or "—")
+    from_stn   = (data.get("boardingPoint") or data.get("boardingStationName")
+                  or data.get("BoardingPoint") or data.get("fromStation")
+                  or data.get("from") or data.get("sourceStation") or "—")
+    to_stn     = (data.get("reservationUpto") or data.get("destinationStation")
+                  or data.get("ReservationUpto") or data.get("toStation")
+                  or data.get("to") or "—")
+    doj        = (data.get("dateOfJourney") or data.get("doj")
+                  or data.get("Doj") or data.get("date_of_journey") or "—")
+    cls        = (data.get("journeyClass") or data.get("className")
+                  or data.get("class") or data.get("Class")
+                  or data.get("journey_class") or "—")
+    chart      = (data.get("chartPrepared") or data.get("charting_status")
+                  or data.get("ChartPrepared") or False)
+    passengers = (data.get("passengerList") or data.get("passengers")
+                  or data.get("PassengerStatus") or data.get("passenger_list")
+                  or data.get("passengerStatus") or [])
 
     chart_badge = (
         '<span style="background:#00E676;color:#000;border-radius:4px;padding:2px 8px;font-size:.72rem;font-weight:700">CHART PREPARED</span>'
@@ -86,11 +100,16 @@ def _render_pnr_result(data: dict):
     if passengers:
         st.markdown("### 👤 Passenger Status")
         for i, p in enumerate(passengers, 1):
-            booking_status = p.get("bookingStatus") or p.get("currentStatus", "—")
-            current_status = p.get("currentStatus") or p.get("bookingStatus", "—")
-            coach  = p.get("coachId") or p.get("coach", "—")
-            berth  = p.get("berthNo") or p.get("berth", "—")
-            berth_type = p.get("berthType", "")
+            booking_status = (p.get("bookingStatus") or p.get("BookingStatus")
+                              or p.get("booking_status") or p.get("currentStatus") or "—")
+            current_status = (p.get("currentStatus") or p.get("CurrentStatus")
+                              or p.get("current_status") or p.get("bookingStatus") or "—")
+            coach  = (p.get("coachId") or p.get("coach") or p.get("Coach")
+                      or p.get("currentCoach") or p.get("coach_id") or "—")
+            berth  = (p.get("berthNo") or p.get("berth") or p.get("Berth")
+                      or p.get("currentBerthNo") or p.get("berth_no") or "—")
+            berth_type = (p.get("berthType") or p.get("bookingBerthType")
+                          or p.get("berth_type") or "")
             color, emoji = _status_color(current_status)
 
             st.markdown(f"""
@@ -189,7 +208,12 @@ if submitted:
             log_search(st.session_state.user_id, "pnr_status", pnr)
 
         if result["ok"]:
-            data = result["data"].get("data", result["data"])
+            raw = result["data"]
+            # Show full raw response for debugging
+            with st.expander("🔧 Full Raw API Response (debug)", expanded=True):
+                st.json(raw)
+            # Unwrap nested "data" key if present
+            data = raw.get("data", raw) if isinstance(raw, dict) else raw
             _render_pnr_result(data)
         else:
             error_card(result["error"])
