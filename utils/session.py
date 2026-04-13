@@ -170,6 +170,15 @@ def init_session():
         if k not in st.session_state:
             st.session_state[k] = v
 
+    # Auto-load API key from Streamlit Cloud secrets if not already set
+    if not st.session_state.get("rapidapi_key"):
+        try:
+            secret_key = st.secrets.get("RAPIDAPI_KEY", "")
+            if secret_key:
+                st.session_state["rapidapi_key"] = secret_key
+        except Exception:
+            pass
+
 
 def is_logged_in() -> bool:
     return st.session_state.get("logged_in", False)
